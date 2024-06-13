@@ -1,118 +1,320 @@
 import Image from "next/image";
-import { Inter } from "next/font/google";
-
-const inter = Inter({ subsets: ["latin"] });
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
 
 export default function Home() {
+  const router = useRouter();
+  const [content, setContent] = useState([]);
+  const [perPage, setPerPage] = useState(10); // Default per page
+  const [sortBy, setSortBy] = useState("-published_at"); // Default sort by
+  const [totalPages, setTotalPages] = useState(1); // Total pages from API response
+  const [currentPage, setCurrentPage] = useState(1); // Current page
+  const [totalResults, setTotalResults] = useState(null);
+  const [from, setFrom] = useState(null);
+  const [to, setTo] = useState(null);
+
+  useEffect(() => {
+    fetchData();
+  }, [perPage, sortBy, currentPage]); // Fetch data when perPage, sortBy, or currentPage changes
+
+  const fetchData = async () => {
+    try {
+      const response = await fetch(
+        `https://suitmedia-backend.suitdev.com/api/ideas?page[number]=${currentPage}&page[size]=${perPage}&sort=${sortBy}&append[]=small_image&append[]=medium_image&sort=-published_at`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const data = await response.json();
+      console.log(data);
+
+      const dataContent = data.data.map((info: any) => ({
+        published_at: info.published_at,
+        title: info.title,
+        image: info.medium_image[0].url,
+      }));
+
+      setTotalPages(data.meta.last_page);
+      setTotalResults(data.meta.total);
+      setFrom(data.meta.from)
+      setTo(data.meta.to);
+      setContent(dataContent);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  const handlePerPageChange = (value: any) => {
+    setPerPage(value);
+    setCurrentPage(1); // Reset to first page when changing per page
+  };
+
+  const handleSortByChange = (value: any) => {
+    setSortBy(value);
+    setCurrentPage(1); // Reset to first page when changing sort by
+  };
+
+  const handlePageNumberClick = (pageNumber: any) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const renderPagination = () => {
+    const pageNumbers = [];
+    const maxPagesToShow = 5; // Maximum number of pages to show at once
+  
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+  
+    
+    startPage = Math.max(1, endPage - maxPagesToShow + 1);
+  
+    const handlePrevClick = () => {
+      const newStartPage = Math.max(1, startPage - maxPagesToShow);
+      const newEndPage = Math.min(totalPages, newStartPage + maxPagesToShow - 1);
+      startPage = newStartPage;
+      endPage = newEndPage;
+      
+    };
+  
+    const handleNextClick = () => {
+      const newStartPage = endPage + 1;
+      const newEndPage = Math.min(totalPages, newStartPage + maxPagesToShow - 1);
+      startPage = newStartPage;
+      endPage = newEndPage;
+      
+    };
+  
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(
+        <button
+          key={i}
+          onClick={() => handlePageNumberClick(i)}
+          style={{
+            marginRight: 5,
+            background: currentPage === i ? "#EB6125" : "white",
+            color: currentPage === i ? "white" : "black",
+            border: "1px solid #ccc",
+            borderRadius: 3,
+            padding: "5px 10px",
+            cursor: "pointer",
+          }}
+        >
+          {i}
+        </button>
+      );
+    }
+  
+    return (
+      <div style={{ marginTop: 10, marginBottom: 10 }}>
+        {startPage > 1 && (
+          <button onClick={handlePrevClick}>
+            {"<"}
+          </button>
+        )}
+        {pageNumbers}
+        {endPage < totalPages && (
+          <button onClick={handleNextClick}>
+            {">"}
+          </button>
+        )}
+      </div>
+    );
+  };
+  
+
   return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
-    >
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/pages/index.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          paddingLeft: 50,
+          paddingRight: 50,
+          backgroundColor: "#EB6125",
+        }}
+      >
+        <Link href={"/"}>
+          <Image
+            src={"/suitmedialogo.png"}
+            width={70}
+            height={50}
+            alt="logo suitmedia"
+          />
+        </Link>
+        <div style={{ display: "flex", alignItems: "center", color: "white" }}>
+          <Link
+            href={"/work"}
+            style={
+              router.pathname === "/work"
+                ? { borderBottomColor: "white", borderBottomWidth: 3 }
+                : { padding: 20 }
+            }
           >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+            Work
+          </Link>
+          <Link
+            href={"/about"}
+            style={
+              router.pathname === "/about"
+                ? { borderBottomColor: "white", borderBottomWidth: 3 }
+                : { padding: 20 }
+            }
+          >
+            About
+          </Link>
+          <Link
+            href={"/service"}
+            style={
+              router.pathname === "/service"
+                ? { borderBottomColor: "white", borderBottomWidth: 3 }
+                : { padding: 20 }
+            }
+          >
+            Service
+          </Link>
+          <Link
+            href={"/"}
+            style={
+              router.pathname === "/"
+                ? { borderBottomColor: "white", borderBottomWidth: 3 }
+                : { padding: 20 }
+            }
+          >
+            Ideas
+          </Link>
+          <Link
+            href={"/career"}
+            style={
+              router.pathname === "/career"
+                ? { borderBottomColor: "white", borderBottomWidth: 3 }
+                : { padding: 20 }
+            }
+          >
+            Career
+          </Link>
+          <Link
+            href={"/contact"}
+            style={
+              router.pathname === "/contact"
+                ? { borderBottomColor: "white", borderBottomWidth: 3 }
+                : { padding: 20 }
+            }
+          >
+            Contact
+          </Link>
         </div>
       </div>
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
+      <div style={{ position: "relative", color: "white" }}>
         <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
+          src={"/banner.jpg"}
+          alt="banner"
+          width={600}
+          height={315}
+          objectFit="cover"
+          style={{
+            width: "100%",
+            height: "300px",
+            clipPath: "polygon(0% 0%, 100% 0%, 100% 70%, 0% 100%)",
+          }}
         />
+        <div
+          style={{
+            width: "fit-content",
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+          }}
+        >
+          <p style={{ textAlign: "center", fontSize: 30 }}>Ideas</p>
+          <p>Where all of our great things begin</p>
+        </div>
       </div>
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+      {/* Dropdowns */}
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
+        <div style={{marginRight: 20 }}>
+          Showing {from} - {to} from {totalResults}
+        </div>
+        <div style={{ marginRight: 20 }}>
+          Show per page:
+          <select
+            style={{
+              borderColor: "#ccc",
+              borderWidth: 1,
+              borderRadius: 20,
+              marginLeft: 10,
+            }}
+            value={perPage}
+            onChange={(e) => handlePerPageChange(e.target.value)}
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+        </div>
+        <div>
+          Sort by:
+          <select
+            style={{
+              borderColor: "#ccc",
+              borderWidth: 1,
+              borderRadius: 20,
+              marginLeft: 10,
+            }}
+            value={sortBy}
+            onChange={(e) => handleSortByChange(e.target.value)}
+          >
+            <option value="-published_at">Newest First</option>
+            <option value="published_at">Oldest First</option>
+          </select>
+        </div>
       </div>
-    </main>
+
+      {/* Content section */}
+      <div
+        style={{
+          padding: 20,
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
+        }}
+      >
+        {content.map((item: any, index) => (
+          <div
+            key={index}
+            style={{
+              margin: 15,
+              width: "25%",
+              height: "70%",
+              marginBottom: "20px",
+              border: "1px solid #ccc",
+              padding: "10px",
+              borderRadius: 20,
+            }}
+          >
+            <Image src={item.image} alt={item.title} width={400} height={200} />
+            <p>{item.published_at}</p>
+            <h3>{item.title}</h3>
+          </div>
+        ))}
+      </div>
+
+      {/* Pagination */}
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
+        {renderPagination()}
+      </div>
+
+    </div>
   );
 }
